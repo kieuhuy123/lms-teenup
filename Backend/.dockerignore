@@ -1,0 +1,18 @@
+// # Backend .dockerignore
+node_modules;
+npm -
+  debug.log.env.env.local.env.development.local.env.test.local.env.production
+    .local.git.gitignore;
+README.md;
+Dockerfile.dockerignore;
+coverage.nyc_output.DS_Store.vscode.idea;
+
+//  Frontend .dockerignore
+node_modules;
+npm -
+  debug.log.env.env.local.env.development.local.env.test.local.env.production
+    .local.git.gitignore;
+README.md;
+Dockerfile.dockerignore;
+dist;
+coverage.nyc_output.DS_Store.vscode.idea;
