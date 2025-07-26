@@ -1,42 +1,56 @@
 # Frontend Dockerfile
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
 RUN npm install --only=production && npm cache clean --force
 
-# Build the app
+# Build stage
 FROM base AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
 
-# Set build args
+# Set build environment
 ARG VITE_API_URL=http://localhost:5000
 ENV VITE_API_URL=$VITE_API_URL
 
-# Build the application
+# Build the app
 RUN npm run build
 
-# Production stage with nginx
-FROM nginx:alpine AS production
-WORKDIR /usr/share/nginx/html
+# Development stage - for development with hot reload
+FROM base AS development
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
 
-# Remove default nginx static assets
-RUN rm -rf ./*
+# Add Node.js options for development
+ENV NODE_OPTIONS="--unhandled-rejections=warn"
 
-# Copy built assets from builder stage
-COPY --from=builder /app/dist .
+EXPOSE 5173
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Production stage - serve with Node.js
+FROM base AS production
+WORKDIR /app
 
-# Nginx image already has nginx user, no need to create
+# Install serve globally
+RUN npm install -g serve
+
+# Copy built assets
+COPY --from=builder /app/dist ./dist
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+
+# Change ownership
+RUN chown -R nextjs:nodejs /app
+USER nextjs
 
 EXPOSE 5173
 
@@ -44,4 +58,5 @@ EXPOSE 5173
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:5173/ || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+# Serve the built app
+CMD ["serve", "-s", "dist", "-l", "5173"]
